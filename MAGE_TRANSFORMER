@@ -1,0 +1,229 @@
+import math
+import pandas as pd
+import numpy as np
+if 'transformer' not in globals():
+    from mage_ai.data_preparation.decorators import transformer
+if 'test' not in globals():
+    from mage_ai.data_preparation.decorators import test
+
+
+@transformer
+def transform(data, *args, **kwargs):
+    data['WindSpeedMPH']=data['WindSpeed']*0.621
+    data['WindSpeedKts']=data['WindSpeed']*1.852
+    data['WindGustMPH']=data['WindGust']*0.621
+    data['WindSpeedMPS']=data['WindSpeedMPH']*0.44704
+    data['TemperatureB']=data['Temperature']-4
+    data['TemperatureC']=(data['Temperature']-32)/1.8
+
+    ## hPa
+    def hPa(tmpF,RH):
+        tmpC = (tmpF-32)/1.8
+        x=RH/100*6.105* math.exp(17.27*tmpC/(237.7+tmpC))
+        return x
+    data['hPa'] = data.apply(lambda row: hPa(row['Temperature'],row['RelativeHumidity']), axis=1)
+    data['FeelsLike'] = (1.07*data['TemperatureC']+0.2*data['hPa']-0.65*data['WindSpeedMPS']-2.7)*9/5+32
+
+
+    #CumSFR
+    def CumSFR (SF):
+        s=[]
+        j = 0
+        for i in range(len(SF)):
+            if i < 6: 
+                j+=SF[i]
+                s.append(abs(round(j,4)))
+            else:
+                j+=SF[i] - SF[i-6]
+                s.append(abs(round(j,4)))
+                
+        return s
+    data['CumSFR']=CumSFR(data['SnowFall'])
+
+
+    ## SWR
+    def SWR(CumSFR,temp,RH):
+        if CumSFR == 0:
+            x = 0
+        else:
+            x=1.977995213-0.537760331*temp+ 0.844151909*RH-0.006793852 *RH**2
+        return x
+    data['SWR'] = data.apply(lambda row: SWR(row['CumSFR'],row['FeelsLike'], row['RelativeHumidity']), axis=1)
+
+    ##PreC
+    def PreC (SF,Pre,SWR):
+        if SF == 0:
+            x = Pre
+        else:
+            x= SF/SWR
+        return x
+    data['PreC'] = data.apply(lambda row: PreC(row['SnowFall'],row['Precipitation'], row['SWR']), axis=1)
+
+
+    ##CumP
+    def CumP (list1,list2):
+        s=[]
+        j = 0
+        for i in range(len(list1)):
+            if i < 6 and list1[i] <34: 
+                    j+=list2[i]
+                    s.append(round(j,4))
+            elif i>=6 and list1[i] <=34:
+                j+=list2[i] - list2[i-6]
+                s.append(round(j,4))
+            else:
+                s.append(round(list2[i],4))
+        return s
+    data['CumP']=CumP(data['FeelsLike'],data['PreC'])
+
+
+    data['CumPinch']=data['CumP']/2.54
+    data['CumSFRinch']=data['CumSFR']/2.54
+
+    data['WindSpeedMPH'] = data['WindSpeedMPH'].astype('float')
+    data['WindSpeedKts'] = data['WindSpeedKts'].astype('float')
+    data['WindGustMPH'] = data['WindGustMPH'].astype('float')
+    data['WindSpeedMPS'] = data['WindSpeedMPS'].astype('float')
+    data['TemperatureB'] = data['TemperatureB'].astype('float')
+    data['TemperatureC'] = data['TemperatureC'].astype('float')
+    data['SWR'] = data['SWR'].astype('float')
+    data['CumSFR'] = data['CumSFR'].astype('float')
+    data['PreC'] = data['PreC'].astype('float')
+    data['CumP'] = data['CumP'].astype('float')
+    data['hPa'] = data['hPa'].astype('float')
+    data['CumPinch'] = data['CumPinch'].astype('float')
+    data['CumSFRinch'] = data['CumSFRinch'].astype('float')
+
+    ##################### model data
+    ##slick road
+
+    def SRP(Tem, CumP_inch, CumSFR_inch):
+        if Tem>=45:
+            x=0 
+        else: 
+            x = (np.exp(-0.77369055-0.03082187*Tem+0.81471614*CumP_inch+2.95322204*CumSFR_inch))/(1+(np.exp(-0.77369055-0.03082187*Tem+0.81471614*CumP_inch+2.95322204*CumSFR_inch)))
+        return x
+    data['SRP'] = data.apply(lambda row: SRP(row['FeelsLike'],row['CumPinch'], row['CumSFRinch']), axis=1)
+
+
+
+    def SRP_B(TemB, CumP_inch, CumSFR_inch):
+        if TemB>=47:
+            x = 0 
+        else: 
+            x = (np.exp(-0.7736905-0.0308218*TemB+0.81471614*CumP_inch+2.95322204*CumSFR_inch))/(1+(np.exp(-0.7736905-0.0308218*TemB+0.81471614*CumP_inch+2.95322204*CumSFR_inch)))
+        return x
+    data['SRP-B'] = data.apply(lambda row: SRP_B(row['TemperatureB'],row['CumPinch'], row['CumSFRinch']), axis=1)
+
+
+
+    ## ILR
+    def ILR (PreC, TmpC, WindSpeedKts):
+        if PreC == 0 or  (PreC!=0 and TmpC >= 4):
+            x = 0
+        elif  PreC!=0  and -2< TmpC < 5:
+            x = (0.1395*(PreC/2.54)**-0.541)*0.7+(-0.0071*TmpC**3-0.1039*TmpC**2-0.3904*TmpC+0.5545)*0.29+(0.0014*WindSpeedKts**2+0.0027*WindSpeedKts+0.7574)*0.01
+        elif Pre!=0  and TmpC<-2 and WindSpeedKts > 12:
+            x = (0.1395*(PreC/2.54)**-0.541)*0.73+(-0.0071*TmpC**3-0.1039*TmpC**2-0.3904*TmpC+0.5545)*0.01+(0.0014*WindSpeedKts**2+0.0027*WindSpeedKts+0.7574)*0.26
+        else:
+            x = (0.1395*(PreC/2.54)**-0.541)*0.79+(-0.0071*TmpC**3-0.1039*TmpC**2-0.3904*TmpC+0.5545)*0.2+(0.0014*WindSpeedKts**2+0.0027*WindSpeedKts+0.7574)*0.01
+        return x
+    data['ILR'] = data.apply(lambda row: ILR(row['PreC'],row['TemperatureC'], row['WindSpeedKts']), axis=1)
+
+    ## FI etc
+    data['FI']=data['CumP']*data['ILR']
+    data['BI']=data['FI']*0.394
+
+    def OSF(SF,FeelsLike):
+        if SF>0 and FeelsLike < 36:
+            x=0.8
+        elif SF== 0 and (FeelsLike>=36 and FeelsLike <=48):
+            x=0.4
+        else:
+            x=0.2
+        return x
+    data['OSF'] = data.apply(lambda row: OSF(row['SnowFall'],row['FeelsLike']), axis=1)
+    ## NSF
+    def NSF(OSF,SWR):
+        a=[]
+        for i in range(len(OSF)):
+            if i == 0:
+                j = OSF[0]
+                a.append(round(j,4))
+            else:
+                j = 0.01*SWR[i]+0.5
+                if j >= 0.999:
+                    j==0.999
+                a.append(round(j,4))
+        return a
+
+    data['NSF']=NSF(data['OSF'],data['SWR'])
+    #SP,IS,SW,PLC,FeelsLike
+
+
+    #SP,IS,SW,PLC,FeelsLike
+    def SP(SF,OSF,NSF):
+        a=[]
+        j=SF[0]
+        for i in range(len(SF)):
+            if i == 0:
+                j = SF[0]
+                a.append(round(j,4))
+            else:
+                j = j*OSF[i] + SF[i] * NSF[i]
+                a.append(round(j,4))
+        return a
+
+
+    data['SP'] = SP(data['SnowFall'],data['OSF'], data['NSF'])
+
+
+
+
+    def IS (SP):
+        if SP > 4:
+            x = SP
+        else:
+            x= 0
+        return x
+    data['IS'] = data.apply(lambda row: IS(row['SP']), axis=1)
+
+    def SW(CumSFR,SWR):
+        if CumSFR == 0:
+            x = 0
+        else:
+            x = 5.2*CumSFR/SWR
+        return x
+    data['SW'] = data.apply(lambda row: SW(row['CumSFR'],row['SWR']), axis=1)
+
+
+
+    data['PLC'] = data['SP']/9/12
+
+    data['FeelsLike'] = (1.07*data['TemperatureC']+0.2*data['hPa']-0.65*data['WindSpeedMPS']-2.7)*9/5+32
+    
+        
+    data['SRP'] =data['SRP'].astype('float')
+    data['SRP-B'] =data['SRP-B'].astype('float')
+    data['ILR'] =data['ILR'].astype('float')
+    data['FI'] =data['FI'].astype('float')
+    data['BI'] =data['BI'].astype('float')
+    data['OSF'] =data['OSF'].astype('float')
+    data['NSF'] =data['NSF'].astype('float')
+    data['SP'] =data['SP'].astype('float')
+    data['IS'] =data['IS'].astype('float')
+    data['SW'] =data['SW'].astype('float')
+    data['PLC'] =data['PLC'].astype('float')
+    data['FeelsLike'] =data['FeelsLike'].astype('float')
+    
+
+
+    return data
+
+
+@test
+def test_output(output, *args) -> None:
+    """
+    Template code for testing the output of the block.
+    """
+    assert output is not None, 'The output is undefined'
