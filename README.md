@@ -19,6 +19,7 @@ For detailed information on the codes pertaining to the data extraction, transfo
 
 
 To enhance the storm severity rating, we implemented a rating system that involves calculations on the current data table and visualization of the results as a radar chart. To accomplish this objective, I utilized PySpark to read data from Google Cloud Platform (GCP) buckets, performed calculations to determine the indicator levels, and then reloaded the updated table back into the buckets as output.
+
 Radar Chart example:
 
 ![image](https://github.com/TerryLiu207/DE-homework/assets/157868320/eb69e36c-0f13-46e7-9729-936280a6bd94)
