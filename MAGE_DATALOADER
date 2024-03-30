@@ -1,0 +1,235 @@
+####DATA LOADER
+
+import io
+import requests
+import pandas as pd
+import numpy as np
+from datetime import datetime, timedelta
+import math
+import json
+if 'data_loader' not in globals():
+    from mage_ai.data_preparation.decorators import data_loader
+if 'test' not in globals():
+    from mage_ai.data_preparation.decorators import test
+
+
+@data_loader
+def load_data_from_api(*args, **kwargs):
+    url="https://api.weather.gov/gridpoints/BOX/70,76"
+    response = requests.get(url)
+# create new variable forecast
+    forecast=response.json()
+    df1 = pd.DataFrame.from_records(forecast['properties']).reset_index() #also can be done by json normalize
+    df2=df1.loc[ :1 , ['temperature','quantitativePrecipitation', 'snowfallAmount', 'relativeHumidity',  'windGust', 'windSpeed', 'lowVisibilityOccurrenceRiskIndex']]
+#get temperature
+    dfTemp=pd.DataFrame.from_records(df2.temperature[1])
+    dfTemp['validTime1']=dfTemp['validTime'].str[0:10]
+    dfTemp['validTime2']=dfTemp['validTime'].str[-2:-1]
+    
+
+    dfTemp2=dfTemp.copy()      
+    k = 0
+    for i in range(len(dfTemp)):
+        copy_n = dfTemp['validTime2'].iloc[i]
+        temp_df = dfTemp.iloc[i]
+        for j in range(int(copy_n)):  
+            dfTemp2.loc[k] = temp_df
+            k+=1
+                
+    dfTemp2['validTime']=dfTemp2['validTime'].str[11:16]
+#(0°C × 9/5) + 32 = 32°F
+    dfTemp2['value']=dfTemp2['value']*9/5+32
+    
+    dateString = dfTemp2.iloc[0]['validTime1'] + " " + dfTemp2.iloc[0]['validTime'] #get row 0 data string
+
+#  convert string to datetime object
+    dt = datetime.strptime(dateString, '%Y-%m-%d %H:%M')
+    dfTemp2.at[0,'validTime'] = dt #df.at assign data to specific field of the dataset
+    for i in range(1, len(dfTemp2)): 
+        dfTemp2.at[i,'validTime'] = datetime.strptime(str(dfTemp2.at[i-1,'validTime']), '%Y-%m-%d %H:%M:%S') + timedelta(hours=1)
+    
+    dfTemp2.rename({'value': 'Temperature'}, axis=1, inplace=True)
+    Temp=dfTemp2.drop(['validTime1', 'validTime2'], axis=1)
+#get precipitation
+    dfPre=pd.DataFrame.from_records(df2.quantitativePrecipitation[1])
+    dfPre['validTime1']=dfPre['validTime'].str[0:10]
+    dfPre['validTime2']=dfPre['validTime'].str[-2:-1]
+    dfPre['value']=dfPre['value']/25.4
+    
+    dfPre2=dfPre.copy()
+    k=0
+    for i in range(len(dfPre)): 
+        if int(dfPre.iloc[i]['validTime2'])>1: 
+            for j in range (int(dfPre.iloc[i]['validTime2'])-1):
+                dfPre2.loc[i+k+0.5]=dfPre2.iloc[i+k] 
+                dfPre2 = dfPre2.sort_index().reset_index(drop=True)
+            k += int(dfPre.iloc[i]['validTime2'])-1
+    dfPre2['validTime']=dfPre2['validTime'].str[11:16]
+    
+    dateString = dfPre2.iloc[0]['validTime1'] + " " + dfPre2.iloc[0]['validTime'] #get row 0 data string
+#  convert string to datetime object
+    dt = datetime.strptime(dateString, '%Y-%m-%d %H:%M')
+
+    dfPre2.at[0,'validTime'] = dt #df.at assign data to specific field of the dataset
+    for i in range(1, len(dfTemp2)): 
+        dfPre2.at[i,'validTime'] = datetime.strptime(str(dfPre2.at[i-1,'validTime']), '%Y-%m-%d %H:%M:%S') + timedelta(hours=1)
+    
+    dfPre2.rename({'value': 'Precipitation'}, axis=1, inplace=True)
+    Pre=dfPre2.drop(['validTime1', 'validTime2'], axis=1)
+        
+#get snowfall
+    dfSF=pd.DataFrame.from_records(df2.snowfallAmount[1])
+    dfSF['validTime1']=dfSF['validTime'].str[0:10]
+    dfSF['validTime2']=dfSF['validTime'].str[-2:-1]
+    dfSF['value']=dfSF['value']/25.4
+    
+    dfSF2=dfSF.copy()
+    s=0
+    for i in range(len(dfSF)): 
+        if int(dfSF.iloc[i]['validTime2'])>1: 
+            for j in range (int(dfSF.iloc[i]['validTime2'])-1):
+                dfSF2.loc[i+s+0.5]=dfSF2.iloc[i+s] 
+                dfSF2 = dfSF2.sort_index().reset_index(drop=True)
+            s += int(dfSF.iloc[i]['validTime2'])-1
+            
+    dfSF2['validTime']=dfSF2['validTime'].str[11:16]
+    dateString = dfSF2.iloc[0]['validTime1'] + " " + dfSF2.iloc[0]['validTime']
+    dt = datetime.strptime(dateString, '%Y-%m-%d %H:%M')
+
+    dfSF2.at[0,'validTime'] = dt #df.at assign data to specific field of the dataset
+    for i in range(1, len(dfSF2)): 
+        dfSF2.at[i,'validTime'] = datetime.strptime(str(dfSF2.at[i-1,'validTime']), '%Y-%m-%d %H:%M:%S') + timedelta(hours=1)
+            
+    dfSF2.rename({'value': 'SnowFall'}, axis=1, inplace=True)
+    Snowfall=dfSF2.drop(['validTime1', 'validTime2'], axis=1)
+
+# get relative humidity
+    dfRH=pd.DataFrame.from_records(df2.relativeHumidity[1])
+    dfRH['validTime1']=dfRH['validTime'].str[0:10]
+    dfRH['validTime2']=dfRH['validTime'].str[-2:-1]
+    
+    dfRH2=dfRH.copy()      
+    k = 0
+    for i in range(len(dfRH)):
+        copy_n = dfRH['validTime2'].iloc[i]
+        temp_df = dfRH.iloc[i]
+        for j in range(int(copy_n)):  
+            dfRH2.loc[k] = temp_df
+            k+=1
+    
+    dfRH2['validTime']=dfRH2['validTime'].str[11:16]
+    dateString = dfRH2.iloc[0]['validTime1'] + " " + dfRH2.iloc[0]['validTime']
+    dt = datetime.strptime(dateString, '%Y-%m-%d %H:%M')
+
+    dfRH2.at[0,'validTime'] = dt #df.at assign data to specific field of the dataset
+    for i in range(1, len(dfRH2)): 
+        dfRH2.at[i,'validTime'] = datetime.strptime(str(dfRH2.at[i-1,'validTime']), '%Y-%m-%d %H:%M:%S') + timedelta(hours=1)
+    
+    dfRH2.rename({'value': 'RelativeHumidity'}, axis=1, inplace=True)
+    RH=dfRH2.drop(['validTime1', 'validTime2'], axis=1)
+            
+    #get windgust
+    dfWG=pd.DataFrame.from_records(df2.windGust[1])
+    dfWG['validTime1']=dfWG['validTime'].str[0:10]
+    dfWG['validTime2']=dfWG['validTime'].apply(lambda st: st[st.find("PT")+2:st.find("H")])
+            
+    dfWG2=dfWG.copy()
+    k=0
+    for i in range(len(dfWG)): 
+        if int(dfWG.iloc[i]['validTime2'])>1: 
+            for j in range (int(dfWG.iloc[i]['validTime2'])-1):
+                dfWG2.loc[i+k+0.5]=dfWG2.iloc[i+k] 
+                dfWG2 = dfWG2.sort_index().reset_index(drop=True)
+            k += int(dfWG.iloc[i]['validTime2'])-1
+            
+    dfWG2['validTime']=dfWG2['validTime'].str[11:16]
+    dateString = dfWG2.iloc[0]['validTime1'] + " " + dfWG2.iloc[0]['validTime']
+    dt = datetime.strptime(dateString, '%Y-%m-%d %H:%M')
+
+    dfWG2.at[0,'validTime'] = dt #df.at assign data to specific field of the dataset
+    for i in range(1, len(dfWG2)): 
+        dfWG2.at[i,'validTime'] = datetime.strptime(str(dfWG2.at[i-1,'validTime']), '%Y-%m-%d %H:%M:%S') + timedelta(hours=1)
+            
+    dfWG2.rename({'value': 'WindGust'}, axis=1, inplace=True)
+    WG=dfWG2.drop(['validTime1', 'validTime2'], axis=1)
+
+#get windspeed
+    dfWS=pd.DataFrame.from_records(df2.windSpeed[1])
+    dfWS['validTime1']=dfWS['validTime'].str[0:10]
+    #dfWS['validTime2']=dfWS['validTime'].str[-2:-1]
+    dfWS['validTime2']=dfWS['validTime'].apply(lambda st: st[st.find("PT")+2:st.find("H")])
+
+    dfWS2=dfWS.copy()
+    k=0
+    for i in range(len(dfWS)): 
+        if int(dfWS.iloc[i]['validTime2'])>1: 
+            for j in range (int(dfWS.iloc[i]['validTime2'])-1):
+                dfWS2.loc[i+k+0.5]=dfWS2.iloc[i+k] 
+                dfWS2 = dfWS2.sort_index().reset_index(drop=True)
+            k += int(dfWS.iloc[i]['validTime2'])-1
+            
+    dfWS2['validTime']=dfWS2['validTime'].str[11:16]
+    dateString = dfWS2.iloc[0]['validTime1'] + " " + dfWS2.iloc[0]['validTime']
+    dt = datetime.strptime(dateString, '%Y-%m-%d %H:%M')
+
+    dfWS2.at[0,'validTime'] = dt #df.at assign data to specific field of the dataset
+    for i in range(1, len(dfWS2)): 
+        dfWS2.at[i,'validTime'] = datetime.strptime(str(dfWS2.at[i-1,'validTime']), '%Y-%m-%d %H:%M:%S') + timedelta(hours=1)
+    
+    dfWS2.rename({'value': 'WindSpeed'}, axis=1, inplace=True)
+    WS=dfWS2.drop(['validTime1', 'validTime2'], axis=1)
+
+#get visibility
+    dfV=pd.DataFrame.from_records(df2.lowVisibilityOccurrenceRiskIndex[1])
+    dfV['validTime1']=dfV['validTime'].str[0:10]
+    dfV['validTime2']=dfV['validTime'].apply(lambda st: st[st.find("PT")+2:st.find("H")])
+    dfV['validTime2']=dfV['validTime2'].str[-2: ]
+    dfV['validTime2']=dfV['validTime2'].str.replace(r'[^0-9]','')
+    
+    dfV2=dfV.copy()
+    k=0
+    for i in range(len(dfV)): 
+        if int(dfV.iloc[i]['validTime2'])>1: 
+            for j in range (int(dfV.iloc[i]['validTime2'])-1):
+                dfV2.loc[i+k+0.5]=dfV2.iloc[i+k] 
+                dfV2 = dfV2.sort_index().reset_index(drop=True)
+            k += int(dfV.iloc[i]['validTime2'])-1
+        
+
+    dfV2['validTime']=dfV2['validTime'].str[11:16]
+    dateString = dfV2.iloc[0]['validTime1'] + " " + dfV2.iloc[0]['validTime']
+    dt = datetime.strptime(dateString, '%Y-%m-%d %H:%M')
+
+    dfV2.at[0,'validTime'] = dt #df.at assign data to specific field of the dataset
+    for i in range(1, len(dfV2)): 
+        dfV2.at[i,'validTime'] = datetime.strptime(str(dfV2.at[i-1,'validTime']), '%Y-%m-%d %H:%M:%S') + timedelta(hours=1)
+    
+    dfV2.rename({'value': 'Visibility'}, axis=1, inplace=True)
+    Visibility=dfV2.drop(['validTime1', 'validTime2'], axis=1)
+    
+#combine
+    weather = pd.merge(pd.merge(pd.merge(pd.merge(pd.merge(pd.merge(Temp, Pre,on='validTime'), 
+                                                       Snowfall, how='outer', on='validTime'), RH, how='outer', on='validTime'),
+                                     WG, how='outer', on='validTime'), WS, how='outer', on='validTime'), 
+                   Visibility, how='outer',on='validTime') #KEEP NULL IN DATA FRAME
+    
+    weather['validTime'] = weather['validTime'].astype('str')
+    weather['Temperature'] = weather['Temperature'].astype('float')
+    weather['Precipitation'] = weather['Precipitation'].astype('float')
+    weather['SnowFall'] = weather['SnowFall'].astype('float')
+    weather['RelativeHumidity'] = weather['RelativeHumidity'].astype('float')
+    weather['WindGust'] = weather['WindGust'].astype('float')
+    weather['WindSpeed'] = weather['WindSpeed'].astype('float')
+    weather['Visibility'] = weather['Visibility'].astype('float')
+    weather = weather.fillna(0)
+    weather = weather[0:72]
+
+    return weather
+
+
+@test
+def test_output(output, *args) -> None:
+    """
+    Template code for testing the output of the block.
+    """
+    assert output is not None, 'The output is undefined'
