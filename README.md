@@ -29,5 +29,9 @@ To construct the dashboard, I generated datasets with reading most recent bucket
 PySpark codes please see attachment.
 
 ![image](https://github.com/TerryLiu207/DE-homework/assets/157868320/84b87c60-f54d-4ed3-a1bd-3adc570e5d20)
+![image](https://github.com/TerryLiu207/DE-homework/assets/157868320/1d365b90-86a5-4380-a8a5-a22b7d89c8d6)
+
+
+dashboard link: https://lookerstudio.google.com/reporting/e4c78f2b-26c2-47d9-98e8-c8e578783de5/page/KfwuD
 
 
