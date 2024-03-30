@@ -25,7 +25,7 @@ Radar Chart example:
 ![image](https://github.com/TerryLiu207/DE-homework/assets/157868320/eb69e36c-0f13-46e7-9729-936280a6bd94)
 
 
-To construct the dashboard, I generated datasets containing the completed tables in BigQuery and imported them into Looker. Additionally, I scheduled BigQuery to run at 10:45 PM EST and Looker to run at 11:15 PM EST. This ensures that the data is updated and available for visualization on the Looker dashboard.
+To construct the dashboard, I generated datasets with reading most recent bucket file in BigQuery and imported them into Looker. Additionally, I scheduled BigQuery to run at 10:45 PM EST and Looker to run at 11:15 PM EST. This ensures that the data is updated and available for visualization on the Looker dashboard.
 PySpark codes please see attachment.
 
 ![image](https://github.com/TerryLiu207/DE-homework/assets/157868320/84b87c60-f54d-4ed3-a1bd-3adc570e5d20)
