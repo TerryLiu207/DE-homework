@@ -3,7 +3,7 @@ This project expands upon my previous work, which involved gathering weather dat
 
 The current initiative focuses on creating a system to assist in resource allocation for managing upcoming winter storms, specifically tailored for the Massachusetts Bay Transportation Authority (MBTA). This system provides comprehensive forecasts based on various weather factors that impact road and environmental conditions. By employing machine learning models and other analytical methods, it delivers visualizations to MBTA decision-makers, illustrating the magnitude and timing of weather events on an hourly basis. Integrated into existing storm planning processes, including overall storm level determination, the system underwent successful testing during the 2021-2022 period and is now undergoing full implementation.
 
-Due to confidentiality concerns, a simplified version of the dashboard was utilized. Please refer to the attached data description for the final dataset.
+Due to confidentiality concerns, a simplified version of the dashboard was utilized. Data are pulling from NOAA API and please refer to the attached data description for the final dataset.
 
 ![image](https://github.com/TerryLiu207/DE-homework/assets/157868320/f317d71a-cf3c-41b4-ba59-cc8ddffbe75a)
 
