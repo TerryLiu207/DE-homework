@@ -11,13 +11,12 @@ Due to confidentiality concerns, a simplified version of the dashboard was utili
 I opted for batch processing, scheduling Mage to execute the ETL process at 10:15 AM EST daily (2:00 AM UTC). The data collection from the NOAA weather API is managed by Mage, which triggers the API on a daily basis and imports the acquired data into Google Cloud Platform Buckets. Additionally, BigQuery is utilized to partition the dataset by validtime.
 
 For detailed information on the codes pertaining to the data extraction, transformation, and loading (ETL) process, please refer to the attached documentation.
-
+![image](https://github.com/TerryLiu207/DE-homework/assets/157868320/4040ba2e-a0ed-4127-9c6b-ed7eed7707a5)
 ![image](https://github.com/TerryLiu207/DE-homework/assets/157868320/5524b8eb-d92e-43cd-81d5-138c4db986f1)
 
 ![image](https://github.com/TerryLiu207/DE-homework/assets/157868320/41117010-c49e-451d-9438-5a3c5a4f23c1)
 
 ![image](https://github.com/TerryLiu207/DE-homework/assets/157868320/943c5177-b5bd-439d-a91b-3e74deb9960c)
-![image](https://github.com/TerryLiu207/DE-homework/assets/157868320/4040ba2e-a0ed-4127-9c6b-ed7eed7707a5)
 
 
 
