@@ -17,6 +17,8 @@ For detailed information on the codes pertaining to the data extraction, transfo
 ![image](https://github.com/TerryLiu207/DE-homework/assets/157868320/41117010-c49e-451d-9438-5a3c5a4f23c1)
 
 ![image](https://github.com/TerryLiu207/DE-homework/assets/157868320/943c5177-b5bd-439d-a91b-3e74deb9960c)
+![image](https://github.com/TerryLiu207/DE-homework/assets/157868320/4040ba2e-a0ed-4127-9c6b-ed7eed7707a5)
+
 
 
 To enhance the storm severity rating, I implemented a rating system that involves calculations on the current data table and visualization of the results as a radar chart. To accomplish this objective, I utilized PySpark to read data from Google Cloud Platform (GCP) buckets, performed calculations to determine the indicator levels, and then reloaded the updated table back into the buckets as output.
@@ -30,6 +32,8 @@ To construct the dashboard, I generated datasets with reading most recent bucket
 PySpark codes please see attachment.
 
 ![image](https://github.com/TerryLiu207/DE-homework/assets/157868320/84b87c60-f54d-4ed3-a1bd-3adc570e5d20)
+![image](https://github.com/TerryLiu207/DE-homework/assets/157868320/9ac6c5bb-28fc-42e7-9ec7-74fce568ad91)
+
 ![image](https://github.com/TerryLiu207/DE-homework/assets/157868320/1d365b90-86a5-4380-a8a5-a22b7d89c8d6)
 
 
